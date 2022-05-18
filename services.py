@@ -65,9 +65,7 @@ def delete_classroom(db: Session, class_id: int):
     classroom = db.get(models.Classroom, class_id)
     db.delete(classroom)
     subject_id = db.query(models.Subject.id).filter(models.Subject.class_id == class_id).offset(0).limit(100).all()
-    print(subject_id)
     for id in subject_id :
-        print(int(id[0]))
         db.query(models.Exercise).filter(models.Exercise.subject_id == int(id[0])).delete()
     db.query(models.Subject).filter(models.Subject.class_id == class_id).delete()
     db.commit()
@@ -88,13 +86,10 @@ def delete_subject_exercise(db: Session, exercise_id: int):
 
 def create_user(db: Session, username: schemas.UserCreate, password: str):
     hashed_password = security.get_password_hash(password)
-    print(hashed_password)
     db_user = models.User(**username.dict(), hashed_password=hashed_password)
-    print("OK")
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    print("OK")
     return db_user
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
@@ -105,7 +100,6 @@ def get_db_csv():
     path_db_full = settings.path_db
     path_db = path_db_full.split('/')[-1]
     abs_db_path = os.path.join(location, path_db)
-    print(abs_db_path)
     conn = sqlite3.connect(abs_db_path, isolation_level=None,
                        detect_types=sqlite3.PARSE_COLNAMES)
     query_string = """
@@ -115,9 +109,7 @@ def get_db_csv():
         AND school_subject.id = exercise.subject_id
         order by classrooms.id, school_subject.id
     """
-    print(query_string)
     db_df = pd.read_sql_query(query_string, conn)
-    print(db_df)
     db_df.to_csv('database_classi.csv', index=False)
     csv_path = os.path.join(location, 'database_classi.csv')
     return csv_path
