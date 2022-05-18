@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from fastapi.security import OAuth2PasswordRequestForm
 import security
+from fastapi.responses import FileResponse
 models.Base.metadata.create_all(bind=engine)
 # class Settings():
 #     server_port = 8000
@@ -154,6 +155,11 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @app.get("/users/me/")
 async def read_users_me(current_user: models.User = Depends(security.get_current_user)):
     return current_user
+
+@app.get("/csv/")
+def get_db_as_csv():
+    csv_file_path = services.get_db_csv()
+    return FileResponse(csv_file_path)
 
 if __name__ == '__main__' :
     uvicorn.run("main:app", port=settings.server_port, reload=True)

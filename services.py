@@ -2,7 +2,10 @@ from unicodedata import name
 from sqlalchemy.orm import Session
 import models, schemas
 import security
-
+import pandas as pd
+import sqlite3
+import os
+from config import settings
 def get_classroom(db: Session, class_id: int):
     return db.query(models.Classroom).filter(models.Classroom.id == class_id).first()
 
@@ -96,3 +99,25 @@ def create_user(db: Session, username: schemas.UserCreate, password: str):
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
+
+def get_db_csv():
+    location = os.path.dirname(__file__)
+    path_db_full = settings.path_db
+    path_db = path_db_full.split('/')[-1]
+    abs_db_path = os.path.join(location, path_db)
+    print(abs_db_path)
+    conn = sqlite3.connect(abs_db_path, isolation_level=None,
+                       detect_types=sqlite3.PARSE_COLNAMES)
+    query_string = """
+        SELECT classrooms.class_name as "Classroom Name",  school_subject.name as "Subject Name", exercise.title as "Exercise"
+        FROM classrooms , school_subject, exercise
+        WHERE classrooms.id = school_subject.class_id
+        AND school_subject.id = exercise.subject_id
+        order by classrooms.id, school_subject.id
+    """
+    print(query_string)
+    db_df = pd.read_sql_query(query_string, conn)
+    print(db_df)
+    db_df.to_csv('database_classi.csv', index=False)
+    csv_path = os.path.join(location, 'database_classi.csv')
+    return csv_path
