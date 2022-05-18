@@ -19,4 +19,8 @@ cd frontend
 
 npm install
 
+# Run Vue JS Development Server:
+
+npm run serve
+
 # Open up Chrome and go to 127.0.0.1:8080 and the app is now running in development mode!
