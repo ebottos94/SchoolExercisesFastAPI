@@ -165,6 +165,7 @@ export default {
           this.getClassrooms();
         })
         .catch((error) => {
+          alert(error.response.data.detail)
           console.error(error);
         });
       this.newClassroom = ''

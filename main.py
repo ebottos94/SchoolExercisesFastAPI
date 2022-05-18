@@ -1,14 +1,19 @@
+from datetime import datetime, timedelta
 from typing import List
-
-from fastapi import Depends, FastAPI, HTTPException
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
-
 import models, schemas, services
 from database import  SessionLocal, engine
 from fastapi.middleware.cors import CORSMiddleware
-
+from config import settings
+from fastapi.security import OAuth2PasswordRequestForm
+import security
 models.Base.metadata.create_all(bind=engine)
-
+# class Settings():
+#     server_port = 8000
+#     max_num_class = 5
+# settings = Settings()
 app = FastAPI()
 
 app.add_middleware(
@@ -26,16 +31,24 @@ def get_db():
     finally:
         db.close()
 
-@app.get("/")
-async def root():
-    return {"message" : "Hello World!"}
+@app.post("/sign_up/", response_model=schemas.UserInDB)
+def sign_up(username: schemas.UserCreate, password : str, db: Session = Depends(get_db)):
+    db_classroom = services.get_user_by_name(db, username=username.username)
+    if db_classroom:
+        raise HTTPException(status_code=400, detail="Username : %s already exist"%username.username)
+    return services.create_user(db=db, username=username, password=password)
 
-@app.get('/prova/{id}')
-async def prova(id: int):
-    return {"valore" : id}
+@app.get("/users/", response_model=list[schemas.UserInDB])
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    users = services.get_users(db, skip=skip, limit=limit)
+    return users
+
+
 
 @app.post("/classrooms/", response_model=schemas.Classroom)
 def create_classroom(classroom: schemas.ClassroomCreate, db: Session = Depends(get_db)):
+    if len(db.query(models.Classroom).all()) >= settings.max_num_class :
+        raise HTTPException(status_code=400, detail="Sorry, %s is the max number of classrooms!" %settings.max_num_class)
     db_classroom = services.get_classroom_by_name(db, class_name=classroom.class_name)
     if db_classroom:
         raise HTTPException(status_code=400, detail="Classroom already exist")
@@ -121,3 +134,26 @@ def delete_exercise(class_id: int, subject_id: int, exercise_id: int, db: Sessio
     if db_exercise is None:
         raise HTTPException(status_code=404, detail="Exercise not found")
     return services.delete_subject_exercise(db, exercise_id)
+
+@app.post("/token", response_model=schemas.Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = security.authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = security.create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/users/me/")
+async def read_users_me(current_user: models.User = Depends(security.get_current_user)):
+    return current_user
+
+if __name__ == '__main__' :
+    uvicorn.run("main:app", port=settings.server_port, reload=True)

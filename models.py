@@ -1,3 +1,5 @@
+from email.policy import default
+from enum import unique
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
@@ -31,3 +33,11 @@ class Exercise(Base):
     subject_id = Column(Integer, ForeignKey("school_subject.id"))
 
     subjects = relationship("Subject", back_populates="exercises")
+
+class User(Base):
+    __tablename__ = "user"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True)
+    hashed_password = Column(String)
+

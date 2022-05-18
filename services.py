@@ -1,8 +1,7 @@
 from unicodedata import name
 from sqlalchemy.orm import Session
-
 import models, schemas
-
+import security
 
 def get_classroom(db: Session, class_id: int):
     return db.query(models.Classroom).filter(models.Classroom.id == class_id).first()
@@ -15,6 +14,9 @@ def get_exercise(db: Session, exercise_id: int):
 
 def get_classroom_by_name(db: Session, class_name: str):
     return db.query(models.Classroom).filter(models.Classroom.class_name == class_name).first()
+
+def get_user_by_name(db: Session, username: str):
+    return db.query(models.Classroom).filter(models.User.username == username).first()
 
 
 def get_classroms(db: Session, skip: int = 0, limit: int = 100):
@@ -80,3 +82,17 @@ def delete_subject_exercise(db: Session, exercise_id: int):
     db.delete(exercise)
     db.commit()
     return {"ok": True}
+
+def create_user(db: Session, username: schemas.UserCreate, password: str):
+    hashed_password = security.get_password_hash(password)
+    print(hashed_password)
+    db_user = models.User(**username.dict(), hashed_password=hashed_password)
+    print("OK")
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    print("OK")
+    return db_user
+
+def get_users(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.User).offset(skip).limit(limit).all()
