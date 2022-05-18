@@ -11,10 +11,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 import security
 from fastapi.responses import FileResponse
 models.Base.metadata.create_all(bind=engine)
-# class Settings():
-#     server_port = 8000
-#     max_num_class = 5
-# settings = Settings()
+import os
+
+def file_exist(file_name):
+    location = os.path.dirname(__file__)
+    path_to_file = os.path.join(location, file_name)
+    file_exists = os.path.exists(path_to_file)
+    return file_exists
+    
 app = FastAPI()
 
 app.add_middleware(
@@ -31,9 +35,13 @@ def get_db():
         yield db
     finally:
         db.close()
+    
+
 
 @app.post("/sign_up/", response_model=schemas.UserInDB)
 def sign_up(username: schemas.UserCreate, password : str, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_user_by_name(db, username=username.username)
     if db_classroom:
         raise HTTPException(status_code=400, detail="Username : %s already exist"%username.username)
@@ -41,6 +49,8 @@ def sign_up(username: schemas.UserCreate, password : str, db: Session = Depends(
 
 @app.get("/users/", response_model=list[schemas.UserInDB])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     users = services.get_users(db, skip=skip, limit=limit)
     return users
 
@@ -48,6 +58,8 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 @app.post("/classrooms/", response_model=schemas.Classroom)
 def create_classroom(classroom: schemas.ClassroomCreate, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     if len(db.query(models.Classroom).all()) >= settings.max_num_class :
         raise HTTPException(status_code=400, detail="Sorry, %s is the max number of classrooms!" %settings.max_num_class)
     db_classroom = services.get_classroom_by_name(db, class_name=classroom.class_name)
@@ -57,11 +69,15 @@ def create_classroom(classroom: schemas.ClassroomCreate, db: Session = Depends(g
 
 @app.get("/classrooms/", response_model=list[schemas.Classroom])
 def read_classrooms(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     classrooms = services.get_classroms(db, skip=skip, limit=limit)
     return classrooms
 
 @app.get("/classrooms/{class_id}", response_model=schemas.Classroom)
 def read_classroom(class_id: int, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_classroom(db, class_id=class_id)
     if db_classroom is None:
         raise HTTPException(status_code=404, detail="Classroom not found")
@@ -69,6 +85,8 @@ def read_classroom(class_id: int, db: Session = Depends(get_db)):
 
 @app.post("/classrooms/{class_id}/subjects/", response_model=schemas.Subject)
 def create_classroom_subject(class_id: int, subject: schemas.SubjectCreate, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_classroom(db, class_id=class_id)
     if db_classroom is None:
         raise HTTPException(status_code=404, detail="Classroom not found")
@@ -79,6 +97,8 @@ def create_classroom_subject(class_id: int, subject: schemas.SubjectCreate, db: 
 
 @app.get("/classrooms/{class_id}/subjects/", response_model=list[schemas.Subject])
 def read_classroom_subjects(class_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_classroom(db, class_id=class_id)
     if db_classroom is None:
         raise HTTPException(status_code=404, detail="Classroom not found")
@@ -87,6 +107,8 @@ def read_classroom_subjects(class_id: int, skip: int = 0, limit: int = 100, db: 
 
 @app.post("/classrooms/{class_id}/{subject_id}/exercises", response_model=schemas.Exercise)
 def create_subject_exercises(class_id: int, subject_id: int, exercise: schemas.ExerciseCreate, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_classroom(db, class_id=class_id)
     if db_classroom is None:
         raise HTTPException(status_code=404, detail="Classroom not found")
@@ -97,6 +119,8 @@ def create_subject_exercises(class_id: int, subject_id: int, exercise: schemas.E
 
 @app.get("/classrooms/{class_id}/{subject_id}/exercises", response_model=list[schemas.Exercise])
 def read_subject_exercises(class_id: int, subject_id, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_classroom(db, class_id=class_id)
     if db_classroom is None:
         raise HTTPException(status_code=404, detail="Classroom not found")
@@ -108,6 +132,8 @@ def read_subject_exercises(class_id: int, subject_id, skip: int = 0, limit: int 
 
 @app.delete("/classrooms/{class_id}")
 def delete_classroom(class_id: int, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_classroom(db, class_id=class_id)
     if db_classroom is None:
         raise HTTPException(status_code=404, detail="Classroom not found")
@@ -115,6 +141,8 @@ def delete_classroom(class_id: int, db: Session = Depends(get_db)):
 
 @app.delete("/classrooms/{class_id}/{subject_id}")
 def delete_subject(class_id: int, subject_id: int, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_classroom(db, class_id=class_id)
     if db_classroom is None:
         raise HTTPException(status_code=404, detail="Classroom not found")
@@ -125,6 +153,8 @@ def delete_subject(class_id: int, subject_id: int, db: Session = Depends(get_db)
 
 @app.delete("/classrooms/{class_id}/{subject_id}/{exercise_id}")
 def delete_exercise(class_id: int, subject_id: int, exercise_id: int, db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     db_classroom = services.get_classroom(db, class_id=class_id)
     if db_classroom is None:
         raise HTTPException(status_code=404, detail="Classroom not found")
@@ -134,10 +164,12 @@ def delete_exercise(class_id: int, subject_id: int, exercise_id: int, db: Sessio
     db_exercise = services.get_exercise(db, exercise_id=exercise_id)
     if db_exercise is None:
         raise HTTPException(status_code=404, detail="Exercise not found")
-    return services.delete_subject_exercise(db, exercise_id)
+    return services.delete_subject_exercise(db,     exercise_id)
 
 @app.post("/token", response_model=schemas.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     user = security.authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -158,6 +190,8 @@ async def read_users_me(current_user: models.User = Depends(security.get_current
 
 @app.get("/csv/")
 def get_db_as_csv():
+    if not file_exist(settings.path_db.split('/')[-1]) :
+        raise HTTPException(status_code=500, detail="ERROR! Database not found!")
     csv_file_path = services.get_db_csv()
     return FileResponse(csv_file_path)
 
